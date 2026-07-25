@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://backend-triplanner.onrender.com";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://backend-triplanner.onrender.com/" || "http://localhost:8000"; 
 
 export async function POST(request: Request) {
   try {
@@ -14,8 +14,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const cleanApiUrl = API_URL.replace(/\/$/, "");
-    const res = await axios.post(`${cleanApiUrl}/api/travel`, {
+    const res = await axios.post(`${API_URL}/api/travel`, {
       message,
       thread_id: body.thread_id,
     });
