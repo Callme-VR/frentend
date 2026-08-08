@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { marked } from "marked";
 import axios from "axios";
 
@@ -18,10 +18,28 @@ export default function Home() {
   const [threadId, setThreadId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    // Silently pre-warm backend server when the app is first opened
+    axios.get("/api/ai").catch(() => {});
+  }, []);
+
+  const cancelRequest = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setLoading(false);
+    setError("Plan generation cancelled.");
+  }, []);
 
   const sendMessage = useCallback(async () => {
     const message = input.trim();
     if (!message) return;
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     setLoading(true);
     setError(null);
@@ -29,7 +47,7 @@ export default function Home() {
     setThreadId(null);
 
     try {
-      const res = await axios.post("/api/ai", { message });
+      const res = await axios.post("/api/ai", { message }, { signal: controller.signal });
       const data = res.data;
 
       if (!data.success) {
@@ -40,13 +58,16 @@ export default function Home() {
       setResult(data.answer);
       setThreadId(data.thread_id);
     } catch (e) {
-      if (axios.isAxiosError(e) && e.response?.data?.error) {
+      if (axios.isCancel(e) || (e instanceof Error && e.name === "CanceledError")) {
+        setError("Plan generation cancelled.");
+      } else if (axios.isAxiosError(e) && e.response?.data?.error) {
         setError(e.response.data.error);
       } else {
         setError(e instanceof Error ? e.message : "Failed to connect to server.");
       }
     } finally {
       setLoading(false);
+      abortControllerRef.current = null;
     }
   }, [input]);
 
@@ -95,20 +116,46 @@ export default function Home() {
             rows={3}
             className="w-full resize-none border border-[var(--border)] rounded-lg p-3 text-sm outline-none focus:border-[var(--foreground)] transition-colors bg-transparent"
           />
-          <button
-            onClick={sendMessage}
-            disabled={loading || !input.trim()}
-            className="w-full border border-[var(--foreground)] rounded-lg py-2.5 text-sm font-medium hover:bg-[var(--foreground)] hover:text-[var(--background)] disabled:opacity-40 disabled:pointer-events-none transition-colors"
-          >
+          <div className="flex gap-2">
             {loading ? (
-              <span className="inline-flex items-center gap-2">
-                <span className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin" />
-                Generating...
-              </span>
+              <>
+                <button
+                  disabled
+                  className="flex-1 border border-[var(--foreground)] rounded-lg py-2.5 text-sm font-medium opacity-70 pointer-events-none flex items-center justify-center gap-2"
+                >
+                  <span className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin" />
+                  Generating...
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelRequest}
+                  className="border border-red-500/50 text-red-500 hover:bg-red-500/10 rounded-lg px-5 py-2.5 text-sm font-medium transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </>
             ) : (
-              "Generate Plan"
+              <>
+                <button
+                  type="button"
+                  onClick={sendMessage}
+                  disabled={!input.trim()}
+                  className="flex-1 border border-[var(--foreground)] rounded-lg py-2.5 text-sm font-medium hover:bg-[var(--foreground)] hover:text-[var(--background)] disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                >
+                  Generate Plan
+                </button>
+                {input.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => setInput("")}
+                    className="border border-[var(--border)] rounded-lg px-4 py-2.5 text-sm text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+              </>
             )}
-          </button>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">

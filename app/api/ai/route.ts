@@ -1,6 +1,40 @@
 import axios from "axios";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://backend-triplanner.onrender.com"; 
+const LOCAL_API = "http://127.0.0.1:8000";
+const RENDER_API = "https://backend-triplanner.onrender.com";
+
+async function getBackendUrl(): Promise<string> {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+  
+  // 1. If explicit non-Render URL provided, use it
+  if (envUrl && !envUrl.includes("onrender.com")) {
+    return envUrl;
+  }
+
+  // 2. Try pinging local backend with a quick 300ms timeout
+  try {
+    const res = await fetch(`${LOCAL_API}/health`, {
+      method: "GET",
+      signal: AbortSignal.timeout(300),
+    });
+    if (res.ok) return LOCAL_API;
+  } catch {
+    // Local server not running
+  }
+
+  // 3. Fallback to configured env URL or Render
+  return envUrl || RENDER_API;
+}
+
+export async function GET() {
+  try {
+    const backendUrl = await getBackendUrl();
+    const res = await axios.get(`${backendUrl}/health`, { timeout: 10000 });
+    return Response.json({ success: true, backend: backendUrl, data: res.data });
+  } catch {
+    return Response.json({ success: false, error: "Backend warm up failed" }, { status: 503 });
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -14,11 +48,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const cleanApiUrl = API_URL.replace(/\/$/, "");
-    const res = await axios.post(`${cleanApiUrl}/api/travel`, {
-      message,
-      thread_id: body.thread_id,
-    });
+    const cleanApiUrl = await getBackendUrl();
+    const res = await axios.post(
+      `${cleanApiUrl}/api/travel`,
+      {
+        message,
+        thread_id: body.thread_id,
+      },
+      { timeout: 60000 }
+    );
 
     return Response.json(res.data);
   } catch (e) {
