@@ -5,10 +5,17 @@ import { marked } from "marked";
 import axios from "axios";
 
 const QUICK_PROMPTS = [
-  { label: "Japan Trip", text: "Plan a complete 7 days Japan trip including flights, hotels and sightseeing under 2 lakhs." },
-  { label: "Dubai Trip", text: "Plan a 5 days Dubai trip with flights, hotels and sightseeing." },
-  { label: "Best Hotels", text: "Suggest top-rated hotels in Tokyo, Dubai and Bangkok with booking links and price ranges." },
-  { label: "Global Flights", text: "Give me all country flight info." },
+  { label: "Japan 7 Days", text: "Plan a complete 7 days Japan trip including flights, hotels and sightseeing under 2 lakhs." },
+  { label: "Dubai 5 Days", text: "Plan a 5 days Dubai trip with flights, hotels and sightseeing." },
+  { label: "Top Hotels", text: "Suggest top-rated hotels in Tokyo, Dubai and Bangkok with booking links and price ranges." },
+  { label: "Global Flight Routes", text: "Give me all country flight info and popular flight routes." },
+];
+
+const AGENT_STEPS = [
+  { name: "Flight Agent", icon: "✈️", desc: "AviationStack & IATA" },
+  { name: "Hotel Agent", icon: "🏨", desc: "Tavily Web Search" },
+  { name: "Itinerary Agent", icon: "🗓️", desc: "Gemini 2.5 Flash" },
+  { name: "Final Agent", icon: "📋", desc: "Markdown Synthesis" },
 ];
 
 export default function Home() {
@@ -17,12 +24,13 @@ export default function Home() {
   const [result, setResult] = useState<string | null>(null);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     // Silently pre-warm backend server when the app is first opened
-    axios.get("/api/ai").catch(() => {});
+    axios.get("/api/ai").catch(() => { });
   }, []);
 
   const cancelRequest = useCallback(() => {
@@ -45,6 +53,7 @@ export default function Home() {
     setError(null);
     setResult(null);
     setThreadId(null);
+    setCopied(false);
 
     try {
       const res = await axios.post("/api/ai", { message }, { signal: controller.signal });
@@ -57,6 +66,11 @@ export default function Home() {
 
       setResult(data.answer);
       setThreadId(data.thread_id);
+
+      // Scroll to result after state update
+      setTimeout(() => {
+        resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
     } catch (e) {
       if (axios.isCancel(e) || (e instanceof Error && e.name === "CanceledError")) {
         setError("Plan generation cancelled.");
@@ -81,135 +95,258 @@ export default function Home() {
     [sendMessage]
   );
 
+  const handleCopy = useCallback(() => {
+    if (!result) return;
+    navigator.clipboard.writeText(result);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [result]);
+
   return (
-    <main className="flex-1 mx-auto w-full max-w-3xl px-4 py-12 space-y-10">
-      <section className="text-center space-y-4">
-        <div className="inline-flex items-center gap-2 border border-[var(--border)] rounded-full px-4 py-1.5 text-sm text-[var(--muted-foreground)]">
-          TripMate AI — A Multi-Agent Travel Planner
-        </div>
-        <h1 className="text-4xl font-bold tracking-tight">Plan Your Perfect Trip with AI</h1>
-        <p className="text-[var(--muted-foreground)] max-w-xl mx-auto">
-          Search flights, discover hotels, and generate a complete travel itinerary using a multi-agent LangGraph system.
-        </p>
-      </section>
-
-      <section className="border border-[var(--border)] rounded-xl p-6 space-y-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-semibold">Where do you want to go?</h2>
-            <p className="text-sm text-[var(--muted-foreground)] mt-1">
-              Example: Plan a complete 7 days Japan trip from India under 2 lakhs.
-            </p>
+    <div className="min-h-screen flex flex-col bg-[var(--canvas)] text-[var(--ink)] selection:bg-[#3ecf8e]/30 selection:text-[#171717]">
+      {/* Supabase-inspired Top Navigation (nav-bar-light) */}
+      <header className="border-b border-[var(--hairline-cool)] sticky top-0 z-50 bg-[var(--canvas)]/90 backdrop-blur-md">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-3 font-medium text-base tracking-tight">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#3ecf8e] inline-block shadow-[0_0_8px_#3ecf8e]" />
+            <span className="font-semibold text-lg text-[var(--ink)]">TripMate</span>
+            <span className="text-[11px] font-mono font-normal px-2 py-0.5 rounded-full bg-[var(--canvas-soft)] text-[var(--ink-mute)] border border-[var(--hairline-cool)]">
+              Multi-Agent v0.1
+            </span>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)] shrink-0">
-            <span className="w-2 h-2 rounded-full bg-[var(--foreground)]" />
-            Online
+
+          <div className="flex items-center gap-4">
+            <div className="hidden md:flex items-center gap-2 text-xs text-[var(--ink-mute)]">
+              <span className="w-2 h-2 rounded-full bg-[#3ecf8e] animate-pulse" />
+              LangGraph Engine Active
+            </div>
+            <button
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="bg-[#3ecf8e] hover:bg-[#24b47e] text-[#171717] font-medium text-xs px-3.5 py-1.5 rounded-[6px] transition-all shadow-xs cursor-pointer"
+            >
+              New Trip
+            </button>
           </div>
         </div>
+      </header>
 
-        <div className="space-y-3">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Plan a complete 7 days Japan trip including flights, hotels and sightseeing under 2 lakhs..."
-            rows={3}
-            className="w-full resize-none border border-[var(--border)] rounded-lg p-3 text-sm outline-none focus:border-[var(--foreground)] transition-colors bg-transparent"
-          />
-          <div className="flex gap-2">
-            {loading ? (
-              <>
-                <button
-                  disabled
-                  className="flex-1 border border-[var(--foreground)] rounded-lg py-2.5 text-sm font-medium opacity-70 pointer-events-none flex items-center justify-center gap-2"
-                >
-                  <span className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin" />
-                  Generating...
-                </button>
-                <button
-                  type="button"
-                  onClick={cancelRequest}
-                  className="border border-red-500/50 text-red-500 hover:bg-red-500/10 rounded-lg px-5 py-2.5 text-sm font-medium transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={sendMessage}
-                  disabled={!input.trim()}
-                  className="flex-1 border border-[var(--foreground)] rounded-lg py-2.5 text-sm font-medium hover:bg-[var(--foreground)] hover:text-[var(--background)] disabled:opacity-40 disabled:pointer-events-none transition-colors"
-                >
-                  Generate Plan
-                </button>
-                {input.trim() && (
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-10 sm:py-16 space-y-12">
+        {/* Hero Section */}
+        <section className="text-center space-y-4 max-w-3xl mx-auto">
+          <div className="inline-flex items-center gap-2 bg-[#3ecf8e]/10 border border-[#3ecf8e]/30 rounded-full px-3.5 py-1 text-xs font-medium text-[#24b47e]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#3ecf8e]" />
+            TripMate AI — Multi-Agent Travel Engine
+          </div>
+
+          <h1 className="text-3xl sm:text-5xl font-medium tracking-display text-[var(--ink)] leading-[1.15]">
+            Plan Your Perfect Trip with Autonomous AI Agents
+          </h1>
+
+          <p className="text-sm sm:text-base text-[var(--ink-mute)] max-w-2xl mx-auto leading-relaxed">
+            Search live flights, discover top hotels with verified booking links, and synthesize complete travel itineraries powered by LangGraph and Google GenAI.
+          </p>
+        </section>
+
+        {/* Agent Workspace Card (card-feature-light) */}
+        <section className="border border-[var(--hairline)] rounded-[12px] bg-[var(--canvas)] p-5 sm:p-7 shadow-xs space-y-6">
+          <div className="flex items-center justify-between gap-4 border-b border-[var(--hairline-cool)] pb-4">
+            <div>
+              <h2 className="text-base sm:text-lg font-medium text-[var(--ink)]">Where do you want to go?</h2>
+              <p className="text-xs text-[var(--ink-mute)] mt-0.5">
+                Describe your destination, trip length, budget, or preferred travel style.
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-[var(--ink-mute)] shrink-0 font-mono bg-[var(--canvas-soft)] border border-[var(--hairline-cool)] px-2.5 py-1 rounded-[4px]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#3ecf8e]" />
+              Ready
+            </div>
+          </div>
+
+          {/* Textarea Input Section */}
+          <div className="space-y-4">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Plan a complete 7 days Japan trip including flights, hotels and sightseeing under 2 lakhs..."
+              rows={3}
+              className="w-full resize-none border border-[var(--hairline-strong)] rounded-[6px] p-3.5 text-sm outline-none focus:border-[#171717] focus:ring-1 focus:ring-[#171717] transition-all bg-[var(--canvas-soft)] placeholder:text-[var(--ink-faint)] font-sans"
+            />
+
+            <div className="flex flex-wrap sm:flex-nowrap gap-2.5">
+              {loading ? (
+                <>
+                  <button
+                    disabled
+                    className="flex-1 bg-[#3ecf8e]/70 text-[#171717] font-medium text-xs rounded-[6px] py-2.5 px-4 flex items-center justify-center gap-2 cursor-wait"
+                  >
+                    <span className="w-3.5 h-3.5 border-2 border-[#171717] border-t-transparent rounded-full animate-spin" />
+                    Executing Multi-Agent Workflow...
+                  </button>
                   <button
                     type="button"
-                    onClick={() => setInput("")}
-                    className="border border-[var(--border)] rounded-lg px-4 py-2.5 text-sm text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
+                    onClick={cancelRequest}
+                    className="border border-red-500/30 text-red-600 hover:bg-red-50 font-medium text-xs rounded-[6px] px-4 py-2.5 transition-colors cursor-pointer"
                   >
-                    Clear
+                    Cancel
                   </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={sendMessage}
+                    disabled={!input.trim()}
+                    className="flex-1 bg-[#3ecf8e] hover:bg-[#24b47e] active:bg-[#24b47e] text-[#171717] font-medium text-xs rounded-[6px] py-2.5 px-4 transition-all disabled:opacity-40 disabled:pointer-events-none shadow-xs cursor-pointer"
+                  >
+                    Generate Travel Plan
+                  </button>
+                  {input.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => setInput("")}
+                      className="border border-[var(--hairline-strong)] hover:bg-[var(--canvas-soft)] text-[var(--ink-mute)] hover:text-[var(--ink)] font-medium text-xs rounded-[6px] px-4 py-2.5 transition-colors cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Prompt Pills (pill-tag-soft) */}
+          <div className="pt-2 border-t border-[var(--hairline-cool)]">
+            <span className="text-xs text-[var(--ink-mute)] font-medium block mb-2">Quick Prompts:</span>
+            <div className="flex flex-wrap gap-2">
+              {QUICK_PROMPTS.map((p) => (
+                <button
+                  key={p.label}
+                  onClick={() => setInput(p.text)}
+                  className="bg-[var(--canvas-soft)] hover:bg-[var(--canvas)] text-[var(--ink)] border border-[var(--hairline-cool)] hover:border-[var(--hairline-strong)] text-xs rounded-full px-3 py-1 transition-all cursor-pointer"
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* LangGraph 4-Agent Workflow Progress Bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-3 border-t border-[var(--hairline-cool)]">
+            {AGENT_STEPS.map((step, idx) => (
+              <div
+                key={step.name}
+                className={`p-2.5 rounded-[6px] border text-xs transition-all ${loading
+                  ? "border-[#3ecf8e]/50 bg-[#3ecf8e]/5 animate-pulse"
+                  : result
+                    ? "border-[#3ecf8e]/40 bg-[#3ecf8e]/5"
+                    : "border-[var(--hairline-cool)] bg-[var(--canvas-soft)]"
+                  }`}
+              >
+                <div className="flex items-center gap-1.5 font-medium text-[var(--ink)]">
+                  <span>{step.icon}</span>
+                  <span>{step.name}</span>
+                </div>
+                <div className="text-[11px] text-[var(--ink-mute)] mt-0.5">{step.desc}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Error Section */}
+        {error && (
+          <section className="border border-red-300 rounded-[8px] p-4 bg-red-50/50 text-red-700 text-xs sm:text-sm font-medium">
+            ⚠️ {error}
+          </section>
+        )}
+
+        {/* AI Travel Plan Result Display */}
+        {result && (
+          <section ref={resultRef} className="space-y-4 scroll-mt-20">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--hairline-cool)] pb-3">
+              <div>
+                <h2 className="text-lg font-medium tracking-tight text-[var(--ink)]">Your AI Travel Plan</h2>
+                {threadId && (
+                  <span className="text-xs font-mono text-[var(--ink-mute)] mt-0.5 block">
+                    Session Thread: {threadId}
+                  </span>
                 )}
-              </>
-            )}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleCopy}
+                  className="border border-[var(--hairline-strong)] hover:bg-[var(--canvas-soft)] rounded-[6px] px-3 py-1.5 text-xs font-medium text-[var(--ink)] transition-colors cursor-pointer"
+                >
+                  {copied ? "✓ Copied" : "Copy Markdown"}
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  className="border border-[var(--hairline-strong)] hover:bg-[var(--canvas-soft)] rounded-[6px] px-3 py-1.5 text-xs font-medium text-[var(--ink)] transition-colors cursor-pointer"
+                >
+                  Print Plan
+                </button>
+              </div>
+            </div>
+
+            <div
+              className="border border-[var(--hairline)] rounded-[12px] p-6 sm:p-8 bg-[var(--canvas)] markdown shadow-xs"
+              dangerouslySetInnerHTML={{ __html: marked.parse(result, { breaks: true }) }}
+            />
+          </section>
+        )}
+
+        {/* Feature Grid — Architecture Overview (card-feature-light & card-feature-dark) */}
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-6">
+          <div className="border border-[var(--hairline)] rounded-[12px] p-6 bg-[var(--canvas)] space-y-2">
+            <div className="w-8 h-8 rounded-[6px] bg-[#3ecf8e]/10 text-[#24b47e] flex items-center justify-center text-sm font-bold">
+              ✈️
+            </div>
+            <h3 className="text-base font-medium text-[var(--ink)]">Flight Intelligence</h3>
+            <p className="text-xs text-[var(--ink-mute)] leading-relaxed">
+              Real-time flight routes and airport lookups via AviationStack, pycountry, and airportsdata IATA resolution.
+            </p>
+          </div>
+
+          <div className="border border-[var(--hairline)] rounded-[12px] p-6 bg-[var(--canvas)] space-y-2">
+            <div className="w-8 h-8 rounded-[6px] bg-[#3ecf8e]/10 text-[#24b47e] flex items-center justify-center text-sm font-bold">
+              🏨
+            </div>
+            <h3 className="text-base font-medium text-[var(--ink)]">Live Hotel Search</h3>
+            <p className="text-xs text-[var(--ink-mute)] leading-relaxed">
+              Queries Tavily API to fetch top-rated hotels, estimated price ranges, and verified direct booking links.
+            </p>
+          </div>
+
+          <div className="border border-[var(--hairline)] rounded-[12px] p-6 bg-[var(--canvas-night)] text-[var(--on-dark)] space-y-2">
+            <div className="w-8 h-8 rounded-[6px] bg-[#3ecf8e] text-[#171717] flex items-center justify-center text-sm font-bold">
+              🧠
+            </div>
+            <h3 className="text-base font-medium text-white">LangGraph State Graph</h3>
+            <p className="text-xs text-neutral-400 leading-relaxed">
+              Sequential 4-agent state graph compiled with MemorySaver checkpointer for thread-safe session execution.
+            </p>
+          </div>
+        </section>
+      </main>
+
+      {/* Supabase-inspired Footer (footer-light) */}
+      <footer className="border-t border-[var(--hairline-cool)] bg-[var(--canvas-soft)] text-[var(--ink-mute)] text-xs py-10 mt-16">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2 font-medium text-[var(--ink)]">
+            <span className="w-2 h-2 rounded-full bg-[#3ecf8e]" />
+            <span>TripMate AI</span>
+            <span className="text-[11px] font-mono text-[var(--ink-mute)] font-normal">
+              © {new Date().getFullYear()}
+            </span>
+          </div>
+
+          <div className="text-center sm:text-right text-[11px] text-[var(--ink-mute)]">
+            Built with Next.js 16, FastAPI, LangGraph, Google GenAI (Gemini 2.5), Tavily & AviationStack
           </div>
         </div>
-
-        <div className="flex flex-wrap gap-2">
-          {QUICK_PROMPTS.map((p) => (
-            <button
-              key={p.label}
-              onClick={() => setInput(p.text)}
-              className="border border-[var(--border)] rounded-full px-3 py-1 text-xs hover:bg-[var(--muted)] transition-colors"
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {error && (
-        <section className="border border-[var(--foreground)] rounded-xl p-4 bg-[var(--muted)]">
-          <p className="text-sm">{error}</p>
-        </section>
-      )}
-
-      {result && (
-        <section className="space-y-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold">Your AI Travel Plan</h2>
-              <p className="text-xs text-[var(--muted-foreground)] mt-0.5">Thread ID: {threadId}</p>
-            </div>
-            <div className="flex gap-2 shrink-0">
-              <button
-                onClick={() => navigator.clipboard.writeText(result!)}
-                className="border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs hover:bg-[var(--muted)] transition-colors"
-              >
-                Copy
-              </button>
-              <button
-                onClick={() => window.print()}
-                className="border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs hover:bg-[var(--muted)] transition-colors"
-              >
-                Print
-              </button>
-            </div>
-          </div>
-          <div
-            ref={resultRef}
-            className="border border-[var(--border)] rounded-xl p-6 markdown"
-            dangerouslySetInnerHTML={{ __html: marked.parse(result, { breaks: true }) }}
-          />
-        </section>
-      )}
-
-      <footer className="text-center text-xs text-[var(--muted-foreground)] pb-4">
-        Built with Next.js, FastAPI, LangGraph, Google GenAI (Gemini), PostgreSQL, Tavily and AviationStack
       </footer>
-    </main>
+    </div>
   );
 }
+

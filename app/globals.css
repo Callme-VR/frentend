@@ -1,33 +1,155 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #000000;
-  --border: #e5e5e5;
-  --muted: #f5f5f5;
-  --muted-foreground: #737373;
+  --primary: #3ecf8e;
+  --primary-deep: #24b47e;
+  --primary-soft: #4ade80;
+  --ink: #171717;
+  --ink-secondary: #212121;
+  --ink-mute: #707070;
+  --ink-mute-2: #9a9a9a;
+  --ink-faint: #b2b2b2;
+  --on-primary: #171717;
+  --on-dark: #ffffff;
+  --canvas: #ffffff;
+  --canvas-soft: #fafafa;
+  --canvas-night: #1c1c1c;
+  --canvas-night-soft: #202020;
+  --hairline: #dfdfdf;
+  --hairline-strong: #c7c7c7;
+  --hairline-cool: #ededed;
+  --hairline-cool-2: #efefef;
+  --hairline-cool-3: #d4d4d4;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-primary: var(--primary);
+  --color-primary-deep: var(--primary-deep);
+  --color-primary-soft: var(--primary-soft);
+  --color-ink: var(--ink);
+  --color-ink-mute: var(--ink-mute);
+  --color-canvas: var(--canvas);
+  --color-canvas-soft: var(--canvas-soft);
+  --color-canvas-night: var(--canvas-night);
+  --color-hairline: var(--hairline);
+  --color-hairline-cool: var(--hairline-cool);
+  --font-sans: var(--font-geist-sans), Circular, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, Menlo, Monaco, Consolas, monospace;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.markdown h1 { font-size: 1.5rem; font-weight: 700; margin-top: 1.5rem; margin-bottom: 0.5rem; }
-.markdown h2 { font-size: 1.25rem; font-weight: 600; margin-top: 1.25rem; margin-bottom: 0.5rem; }
-.markdown h3 { font-size: 1.125rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.25rem; }
-.markdown p { margin-bottom: 0.75rem; line-height: 1.625; }
-.markdown ul, .markdown ol { padding-left: 1.5rem; margin-bottom: 0.75rem; }
-.markdown li { margin-bottom: 0.25rem; }
-.markdown strong { font-weight: 600; }
-.markdown a { color: #000; text-decoration: underline; text-underline-offset: 2px; font-weight: 500; }
-.markdown a:hover { background: #000; color: #fff; }
-.markdown hr { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
+.tracking-display {
+  letter-spacing: -0.035em;
+}
+
+/* Markdown Styling conforming to DESIGN.md */
+.markdown {
+  color: var(--ink);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.markdown h1 {
+  font-size: 1.5rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: var(--ink);
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--hairline-cool);
+}
+
+.markdown h2 {
+  font-size: 1.25rem;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: var(--ink);
+}
+
+.markdown h3 {
+  font-size: 1.05rem;
+  font-weight: 500;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: var(--ink);
+}
+
+.markdown p {
+  margin-bottom: 0.85rem;
+}
+
+.markdown ul,
+.markdown ol {
+  padding-left: 1.25rem;
+  margin-bottom: 0.85rem;
+}
+
+.markdown li {
+  margin-bottom: 0.35rem;
+}
+
+.markdown strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.markdown a {
+  color: #24b47e;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s ease;
+}
+
+.markdown a:hover {
+  color: var(--primary);
+}
+
+.markdown hr {
+  border: none;
+  border-top: 1px solid var(--hairline);
+  margin: 1.5rem 0;
+}
+
+.markdown blockquote {
+  border-left: 3px solid var(--primary);
+  padding-left: 1rem;
+  color: var(--ink-mute);
+  margin: 1rem 0;
+  font-style: italic;
+}
+
+.markdown code {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  background-color: var(--canvas-soft);
+  border: 1px solid var(--hairline-cool);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
+.markdown pre {
+  background-color: var(--canvas-night);
+  color: var(--on-dark);
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.markdown pre code {
+  background-color: transparent;
+  border: none;
+  color: inherit;
+  padding: 0;
+}
