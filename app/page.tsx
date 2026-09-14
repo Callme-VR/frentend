@@ -208,7 +208,7 @@ export default function Home() {
       )}
 
       <footer className="text-center text-xs text-[var(--muted-foreground)] pb-4">
-        Built with Next.js, FastAPI, LangGraph, Groq, PostgreSQL, Tavily and AviationStack
+        Built with Next.js, FastAPI, LangGraph, Google GenAI (Gemini), PostgreSQL, Tavily and AviationStack
       </footer>
     </main>
   );

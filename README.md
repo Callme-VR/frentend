@@ -7,7 +7,7 @@
 [![React](https://img.shields.io/badge/React-19.2-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 
-**Triplanner** (also known as **TripMate AI**) is a production-grade, multi-agent AI travel planning platform. It leverages **LangGraph**, **LangChain**, and **Groq (Llama 3.3 70B)** to automatically fetch live flight availability, recommend top-rated hotels with direct booking links, and synthesize practical, budget-aware day-by-day itineraries.
+**Triplanner** (also known as **TripMate AI**) is a production-grade, multi-agent AI travel planning platform. It leverages **LangGraph**, **LangChain**, and **Google GenAI (Gemini 2.5 Flash)** to automatically fetch live flight availability, recommend top-rated hotels with direct booking links, and synthesize practical, budget-aware day-by-day itineraries.
 
 ---
 
@@ -34,7 +34,7 @@
 - 🤖 **Autonomous Multi-Agent System**: Sequential agent graph built with LangGraph for deterministic task delegation (Flight Agent → Hotel Agent → Itinerary Agent → Final Agent).
 - ✈️ **Real-Time Flight Search**: Integrates AviationStack API with `airportsdata` & `pycountry` for dynamic IATA resolution and flight tracking.
 - 🏨 **Live Hotel & Web Search**: Queries Tavily API for real-time hotel options, snippets, and direct web links.
-- 🗓️ **Custom Day-by-Day Itineraries**: Synthesizes budget-aware, realistic travel plans using Groq's high-speed `llama-3.3-70b-versatile` LLM.
+- 🗓️ **Custom Day-by-Day Itineraries**: Synthesizes budget-aware, realistic travel plans using Google GenAI's high-speed `gemini-2.5-flash` LLM.
 - ⚡ **100% Async Pipeline**: Fully asynchronous python backend (`httpx`, `ainvoke`, `AsyncClient`) to maximize throughput without blocking the event loop.
 - 🎨 **Minimalist Sleek UI**: Next.js 16 frontend featuring a clean monochrome design system, interactive prompt shortcuts, clipboard copying, printing, and client-side markdown parsing via `marked`.
 - 🐳 **Containerized & Production Ready**: Backend includes a optimized multi-stage Dockerfile powered by `uv` for ultra-fast dependency resolution.
@@ -55,9 +55,9 @@ graph TD
         FlightAgent --> HotelAgent[🏨 Hotel Agent]
         HotelAgent -->|Query Tavily Web Search| Tavily[(Tavily API)]
         HotelAgent --> ItineraryAgent[🗓️ Itinerary Agent]
-        ItineraryAgent -->|Synthesize Itinerary| GroqLLM1[(Groq Llama-3.3-70B)]
+        ItineraryAgent -->|Synthesize Itinerary| GeminiLLM1[(Google GenAI Gemini 2.5)]
         ItineraryAgent --> FinalAgent[📋 Final Formatting Agent]
-        FinalAgent -->|Format Structured Markdown| GroqLLM2[(Groq Llama-3.3-70B)]
+        FinalAgent -->|Format Structured Markdown| GeminiLLM2[(Google GenAI Gemini 2.5)]
     end
 
     FinalAgent --> Response([📄 Response Payload with Markdown])
@@ -112,7 +112,7 @@ triplanner/
 ### Backend (`backend/`)
 - **Framework**: [FastAPI](https://fastapi.tiangolo.com/) + [Uvicorn](https://www.uvicorn.org/)
 - **Agent Orchestration**: [LangGraph](https://www.langchain.com/langgraph) & [LangChain](https://www.langchain.com/)
-- **LLM Provider**: [Groq](https://groq.com/) (`llama-3.3-70b-versatile`)
+- **LLM Provider**: [Google GenAI](https://ai.google.dev/) (`gemini-2.5-flash`)
 - **HTTP Client**: [HTTPX](https://www.python-httpx.org/) (Async)
 - **External APIs**: [AviationStack](https://aviationstack.com/), [Tavily AI](https://tavily.com/)
 - **Data Tools**: `airportsdata`, `pycountry`
@@ -134,7 +134,7 @@ Before running the application, ensure you have the following installed:
 - **Node.js**: `18.x` or higher (or [Bun](https://bun.sh/))
 - **Docker**: (Optional, for containerized execution)
 - **API Keys Required**:
-  - **Groq API Key**: [Get Key](https://console.groq.com/)
+  - **Google GenAI API Key**: [Get Key](https://aistudio.google.com/)
   - **Tavily API Key**: [Get Key](https://tavily.com/)
   - **AviationStack API Key**: [Get Key](https://aviationstack.com/)
 
@@ -154,7 +154,7 @@ Populate `backend/.env` with your API credentials:
 
 ```env
 # AI Model & Search Keys (Required)
-GROQ_API_KEY=your_groq_api_key_here
+GOOGLE_API_KEY=your_google_api_key_here
 TAVILY_API_KEY=your_tavily_api_key_here
 AVIATIONSTACK_API_KEY=your_aviationstack_api_key_here
 
