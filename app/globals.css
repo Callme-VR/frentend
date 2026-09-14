@@ -153,3 +153,59 @@ body {
   color: inherit;
   padding: 0;
 }
+
+/* Step Searching Animations */
+@keyframes radar-pulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+
+  50% {
+    transform: scale(1.15);
+    opacity: 0.4;
+  }
+
+  100% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+}
+
+@keyframes scan-beam {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes text-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-radar-pulse {
+  animation: radar-pulse 1.8s infinite ease-in-out;
+}
+
+.animate-scan-beam {
+  animation: scan-beam 2.2s infinite ease-in-out;
+}
+
+.animate-text-fade-in {
+  animation: text-fade-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.shadow-glow-emerald {
+  box-shadow: 0 0 16px rgba(62, 207, 142, 0.25), 0 0 2px rgba(62, 207, 142, 0.5);
+}

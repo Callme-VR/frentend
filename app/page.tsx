@@ -11,35 +11,119 @@ const QUICK_PROMPTS = [
   { label: "Global Flight Routes", text: "Give me all country flight info and popular flight routes." },
 ];
 
+
 const AGENT_STEPS = [
-  { name: "Flight Agent", icon: "✈️", desc: "AviationStack & IATA" },
-  { name: "Hotel Agent", icon: "🏨", desc: "Tavily Web Search" },
-  { name: "Travel Planner", icon: "🗓️", desc: "Google GenAI Synthesis" },
+  {
+    id: "flight",
+    stepNum: "01",
+    name: "Flight Agent",
+    icon: "✈️",
+    desc: "AviationStack & IATA Engine",
+    subTasks: [
+      "Resolving origin & destination IATA airport codes...",
+      "Searching direct & connecting airline flight routes...",
+      "Fetching live flight duration & schedule metadata...",
+    ],
+    chips: ["IATA Airport Lookup", "AviationStack API", "Route Resolution"],
+    querySample: "GET /v1/flights?search=IATA&routes=live",
+  },
+  {
+    id: "hotel",
+    stepNum: "02",
+    name: "Hotel Agent",
+    icon: "🏨",
+    desc: "Tavily AI Search & Direct Links",
+    subTasks: [
+      "Querying Tavily AI for top-rated luxury & boutique hotels...",
+      "Filtering 4.5★+ guest reviews, pricing & neighborhood amenities...",
+      "Extracting verified direct Agoda, Booking.com & hotel links...",
+      "Calculating estimated cost per night in local currency...",
+    ],
+    chips: ["Tavily AI Web Search", "Direct Booking URLs", "Guest Ratings & Price"],
+    querySample: "Tavily Search: top rated hotels direct booking price",
+  },
+  {
+    id: "planner",
+    stepNum: "03",
+    name: "Travel Planner",
+    icon: "🗓️",
+    desc: "Google Gemini 3.5 Synthesis",
+    subTasks: [
+      "Integrating flight schedule & Tavily hotel payload into Gemini...",
+      "Synthesizing complete day-by-day sightseeing itinerary...",
+      "Formatting final markdown output with budget & travel tips...",
+    ],
+    chips: ["Gemini 3.5 Flash", "LangGraph State", "Markdown Synthesis"],
+    querySample: "Gemini 3.5: Synthesize travel itinerary markdown",
+  },
 ];
 
 export default function Home() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [activeStepIndex, setActiveStepIndex] = useState(0);
+  const [subTaskIndex, setSubTaskIndex] = useState(0);
   const [result, setResult] = useState<string | null>(null);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const stepTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const subTaskTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Silently pre-warm backend server when the app is first opened
     axios.get("/api/ai").catch(() => { });
   }, []);
 
+  const stopStepAnimation = useCallback(() => {
+    if (stepTimerRef.current) {
+      clearInterval(stepTimerRef.current);
+      stepTimerRef.current = null;
+    }
+    if (subTaskTimerRef.current) {
+      clearInterval(subTaskTimerRef.current);
+      subTaskTimerRef.current = null;
+    }
+  }, []);
+
+  const startStepAnimation = useCallback(() => {
+    setActiveStepIndex(0);
+    setSubTaskIndex(0);
+    stopStepAnimation();
+
+    let currentStep = 0;
+    let currentSubTask = 0;
+
+    // Advance main agent step every 3 seconds
+    stepTimerRef.current = setInterval(() => {
+      currentStep += 1;
+      if (currentStep < AGENT_STEPS.length) {
+        setActiveStepIndex(currentStep);
+        setSubTaskIndex(0);
+        currentSubTask = 0;
+      } else {
+        if (stepTimerRef.current) clearInterval(stepTimerRef.current);
+      }
+    }, 3000);
+
+    // Rotate sub-task searching log text inside active step every 1000ms
+    subTaskTimerRef.current = setInterval(() => {
+      currentSubTask += 1;
+      setSubTaskIndex(currentSubTask);
+    }, 1000);
+  }, [stopStepAnimation]);
+
   const cancelRequest = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
+    stopStepAnimation();
     setLoading(false);
     setError("Plan generation cancelled.");
-  }, []);
+  }, [stopStepAnimation]);
 
   const sendMessage = useCallback(async () => {
     const message = input.trim();
@@ -53,6 +137,7 @@ export default function Home() {
     setResult(null);
     setThreadId(null);
     setCopied(false);
+    startStepAnimation();
 
     try {
       const res = await axios.post("/api/ai", { message }, { signal: controller.signal });
@@ -89,9 +174,11 @@ export default function Home() {
       }
     } finally {
       setLoading(false);
+      stopStepAnimation();
+      setActiveStepIndex(AGENT_STEPS.length);
       abortControllerRef.current = null;
     }
-  }, [input]);
+  }, [input, startStepAnimation, stopStepAnimation]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -240,25 +327,169 @@ export default function Home() {
             </div>
           </div>
 
-          {/* LangGraph 4-Agent Workflow Progress Bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-3 border-t border-[var(--hairline-cool)]">
-            {AGENT_STEPS.map((step, idx) => (
-              <div
-                key={step.name}
-                className={`p-2.5 rounded-[6px] border text-xs transition-all ${loading
-                  ? "border-[#3ecf8e]/50 bg-[#3ecf8e]/5 animate-pulse"
-                  : result
-                    ? "border-[#3ecf8e]/40 bg-[#3ecf8e]/5"
-                    : "border-[var(--hairline-cool)] bg-[var(--canvas-soft)]"
-                  }`}
-              >
-                <div className="flex items-center gap-1.5 font-medium text-[var(--ink)]">
-                  <span>{step.icon}</span>
-                  <span>{step.name}</span>
+          {/* LangGraph Multi-Agent Workflow Animated Loading & Searching Banner */}
+          <div className="pt-4 border-t border-[var(--hairline-cool)] space-y-4">
+            {/* Active Loading Status Banner */}
+            {loading && (
+              <div className="border border-[#3ecf8e]/60 bg-[#3ecf8e]/10 rounded-[10px] p-4 flex flex-col gap-3 shadow-glow-emerald relative overflow-hidden transition-all">
+                {/* Scanning Shimmer Beam */}
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#3ecf8e] to-transparent animate-scan-beam" />
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-full bg-[#3ecf8e]/20 text-[#24b47e] flex items-center justify-center font-bold text-base shrink-0 relative">
+                      <span className="w-5 h-5 border-2 border-[#24b47e] border-t-transparent rounded-full animate-spin" />
+                      <span className="absolute -top-1 -right-1 text-xs">
+                        {AGENT_STEPS[Math.min(activeStepIndex, 2)].icon}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold tracking-tight text-[var(--ink)]">
+                          Step {Math.min(activeStepIndex + 1, 3)} of 3 — {AGENT_STEPS[Math.min(activeStepIndex, 2)].name}
+                        </span>
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#3ecf8e]/30 text-[#1e9668] animate-pulse">
+                          ● SEARCHING & AGENT PROCESSING
+                        </span>
+                      </div>
+                      {/* Active SubTask Search Ticker */}
+                      <p key={subTaskIndex} className="text-xs text-[var(--ink)] font-medium mt-1 animate-text-fade-in flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#3ecf8e] animate-ping shrink-0" />
+                        <span>
+                          {AGENT_STEPS[Math.min(activeStepIndex, 2)].subTasks[
+                            subTaskIndex % AGENT_STEPS[Math.min(activeStepIndex, 2)].subTasks.length
+                          ]}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Progress Percentage Indicator */}
+                  <div className="w-full sm:w-40 space-y-1.5 shrink-0">
+                    <div className="flex justify-between text-[10px] font-mono text-[var(--ink-mute)] font-semibold">
+                      <span>AGENT PIPELINE</span>
+                      <span className="text-[#24b47e]">{Math.min(Math.round(((activeStepIndex + 1) / 3) * 100), 100)}%</span>
+                    </div>
+                    <div className="w-full h-2 bg-[var(--canvas-soft)] rounded-full overflow-hidden border border-[var(--hairline-cool)] p-0.5">
+                      <div
+                        className="h-full bg-[#3ecf8e] transition-all duration-500 rounded-full shadow-[0_0_8px_#3ecf8e]"
+                        style={{ width: `${Math.min(((activeStepIndex + 1) / 3) * 100, 100)}%` }}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="text-[11px] text-[var(--ink-mute)] mt-0.5">{step.desc}</div>
+
+                {/* Step 2 Dedicated Live Hotel Search Spotlight Banner */}
+                {activeStepIndex === 1 && (
+                  <div className="mt-1 pt-2.5 border-t border-[#3ecf8e]/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11px] font-mono text-[#24b47e] bg-[var(--canvas)]/70 p-2.5 rounded-[6px] border border-[#3ecf8e]/30">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#3ecf8e] animate-ping shrink-0" />
+                      <span className="truncate font-semibold text-[var(--ink)]">
+                        📡 Tavily Live Query: &quot;Top hotels &amp; stays in {input.trim() || "destination"} direct booking price&quot;
+                      </span>
+                    </div>
+                    <span className="shrink-0 bg-[#3ecf8e]/20 px-2 py-0.5 rounded text-[10px] font-bold text-[#1e9668] border border-[#3ecf8e]/30">
+                      TAVILY SEARCH ACTIVE
+                    </span>
+                  </div>
+                )}
               </div>
-            ))}
+            )}
+
+            {/* Agent Cards Pipeline Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {AGENT_STEPS.map((step, idx) => {
+                const isActive = loading && idx === activeStepIndex;
+                const isCompleted = (loading && idx < activeStepIndex) || (!loading && result !== null);
+
+                return (
+                  <div
+                    key={step.id}
+                    className={`p-3.5 rounded-[10px] border text-xs transition-all relative overflow-hidden flex flex-col justify-between ${isActive
+                        ? "border-[#3ecf8e] bg-[#3ecf8e]/10 shadow-glow-emerald scale-[1.02] z-10"
+                        : isCompleted
+                          ? "border-[#3ecf8e]/50 bg-[#3ecf8e]/5 text-[var(--ink)]"
+                          : "border-[var(--hairline-cool)] bg-[var(--canvas-soft)] text-[var(--ink-mute)] opacity-65"
+                      }`}
+                  >
+                    {/* Active Scan Line Beam */}
+                    {isActive && (
+                      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#3ecf8e] to-transparent animate-scan-beam" />
+                    )}
+
+                    <div>
+                      {/* Step Header */}
+                      <div className="flex items-center justify-between gap-2 pb-2 border-b border-[var(--hairline-cool)]">
+                        <div className="flex items-center gap-2 font-medium">
+                          <span className={`text-base ${isActive ? "animate-radar-pulse inline-block" : ""}`}>
+                            {step.icon}
+                          </span>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-mono font-bold text-[var(--ink-mute)]">{step.stepNum}</span>
+                              <span className={`font-semibold text-xs ${isActive ? "text-[var(--ink)]" : ""}`}>
+                                {step.name}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          {isActive && (
+                            <span className="flex items-center gap-1 text-[10px] font-mono text-[#1e9668] font-bold bg-[#3ecf8e]/20 px-2 py-0.5 rounded-full animate-pulse">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#3ecf8e] animate-ping" />
+                              SEARCHING
+                            </span>
+                          )}
+                          {isCompleted && !isActive && (
+                            <span className="text-[10px] font-mono text-[#24b47e] font-bold bg-[#3ecf8e]/15 px-2 py-0.5 rounded-full">
+                              ✓ DONE
+                            </span>
+                          )}
+                          {!isActive && !isCompleted && (
+                            <span className="text-[10px] font-mono text-[var(--ink-faint)] bg-[var(--canvas)] px-2 py-0.5 rounded-full border border-[var(--hairline-cool)]">
+                              WAITING
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Engine Sub-Label */}
+                      <div className="text-[11px] font-mono text-[var(--ink-mute)] mt-2 font-medium">
+                        {step.desc}
+                      </div>
+
+                      {/* Active Subtask Log Ticker */}
+                      {isActive && (
+                        <div className="mt-2.5 p-2 rounded-[6px] bg-[var(--canvas)] border border-[#3ecf8e]/40 text-[11px] font-medium text-[var(--ink)] animate-text-fade-in flex items-center gap-1.5 shadow-xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#3ecf8e] animate-ping shrink-0" />
+                          <span className="truncate">
+                            {step.subTasks[subTaskIndex % step.subTasks.length]}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Feature Chips */}
+                    <div className="flex flex-wrap gap-1 mt-3 pt-2 border-t border-[var(--hairline-cool)]">
+                      {step.chips.map((chip) => (
+                        <span
+                          key={chip}
+                          className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-medium ${isActive
+                              ? "bg-[#3ecf8e]/25 text-[#1e9668]"
+                              : isCompleted
+                                ? "bg-[#3ecf8e]/10 text-[#24b47e]"
+                                : "bg-[var(--canvas)] text-[var(--ink-mute)] border border-[var(--hairline-cool)]"
+                            }`}
+                        >
+                          {chip}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </section>
 
@@ -332,7 +563,7 @@ export default function Home() {
             </div>
             <h3 className="text-base font-medium text-white">LangGraph State Graph</h3>
             <p className="text-xs text-neutral-400 leading-relaxed">
-              Sequential 4-agent state graph compiled with MemorySaver checkpointer for thread-safe session execution.
+              Sequential agent state graph compiled with MemorySaver checkpointer for thread-safe session execution.
             </p>
           </div>
         </section>
@@ -350,11 +581,10 @@ export default function Home() {
           </div>
 
           <div className="text-center sm:text-right text-[11px] text-[var(--ink-mute)]">
-            Built with Next.js 16, FastAPI, LangGraph, Google GenAI (Gemini 2.5), Tavily & AviationStack
+            Built with Next.js 16, FastAPI, LangGraph, Google GenAI, Tavily & AviationStack
           </div>
         </div>
       </footer>
     </div>
   );
 }
-
