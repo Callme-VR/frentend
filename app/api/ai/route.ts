@@ -79,3 +79,51 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    let threadId = searchParams.get("thread_id");
+
+    if (!threadId) {
+      try {
+        const body = await request.json();
+        threadId = body.thread_id;
+      } catch {
+        // No body
+      }
+    }
+
+    if (!threadId) {
+      return Response.json(
+        { success: false, error: "thread_id is required for deletion." },
+        { status: 400 }
+      );
+    }
+
+    const cleanApiUrl = await getBackendUrl();
+    const res = await axios.delete(`${cleanApiUrl}/api/travel/${encodeURIComponent(threadId)}`, {
+      timeout: 10000,
+    });
+
+    return Response.json(res.data);
+  } catch (e) {
+    if (axios.isAxiosError(e) && e.response) {
+      return Response.json(
+        {
+          success: false,
+          error: e.response.data?.error || "Backend request failed.",
+        },
+        { status: e.response.status }
+      );
+    }
+    return Response.json(
+      {
+        success: false,
+        error: e instanceof Error ? e.message : "Failed to connect to backend server.",
+      },
+      { status: 500 }
+    );
+  }
+}
+

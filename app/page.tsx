@@ -67,10 +67,49 @@ export default function Home() {
   const [threadId, setThreadId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteSuccessMsg, setDeleteSuccessMsg] = useState<string | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const stepTimerRef = useRef<NodeJS.Timeout | null>(null);
   const subTaskTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const deleteChatThread = useCallback(async () => {
+    if (!threadId) return;
+
+    if (!window.confirm("Are you sure you want to delete this chat thread and clear its memory from the server/database?")) {
+      return;
+    }
+
+    setDeleting(true);
+    setError(null);
+    setDeleteSuccessMsg(null);
+
+    try {
+      const res = await axios.delete("/api/ai", {
+        params: { thread_id: threadId },
+      });
+
+      if (res.data?.success) {
+        setResult(null);
+        setThreadId(null);
+        setInput("");
+        setDeleteSuccessMsg("Chat thread successfully deleted and memory/database load reduced.");
+        setTimeout(() => setDeleteSuccessMsg(null), 5000);
+      } else {
+        setError(res.data?.error || "Failed to delete chat thread.");
+      }
+    } catch (e) {
+      if (axios.isAxiosError(e) && e.response?.data?.error) {
+        setError(e.response.data.error);
+      } else {
+        setError(e instanceof Error ? e.message : "Failed to delete chat thread.");
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }, [threadId]);
+
 
   useEffect(() => {
     // Silently pre-warm backend server when the app is first opened
@@ -493,7 +532,19 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Error Section */}
+        {/* Success / Error Banners */}
+        {deleteSuccessMsg && (
+          <section className="border border-emerald-500/30 rounded-[8px] p-4 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs sm:text-sm font-medium flex items-center justify-between gap-2 shadow-xs">
+            <span>✓ {deleteSuccessMsg}</span>
+            <button
+              onClick={() => setDeleteSuccessMsg(null)}
+              className="text-xs text-emerald-600 hover:text-emerald-800 font-bold px-1.5 py-0.5 rounded cursor-pointer"
+            >
+              ✕
+            </button>
+          </section>
+        )}
+
         {error && (
           <section className="border border-red-300 rounded-[8px] p-4 bg-red-50/50 text-red-700 text-xs sm:text-sm font-medium">
             ⚠️ {error}
@@ -512,7 +563,7 @@ export default function Home() {
                   </span>
                 )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={handleCopy}
                   className="border border-[var(--hairline-strong)] hover:bg-[var(--canvas-soft)] rounded-[6px] px-3 py-1.5 text-xs font-medium text-[var(--ink)] transition-colors cursor-pointer"
@@ -525,8 +576,26 @@ export default function Home() {
                 >
                   Print Plan
                 </button>
+                <button
+                  onClick={deleteChatThread}
+                  disabled={deleting}
+                  className="border border-red-500/30 hover:border-red-500/60 bg-red-500/5 hover:bg-red-500/10 text-red-600 rounded-[6px] px-3 py-1.5 text-xs font-medium transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                  title="Delete chat session and release memory/DB resources"
+                >
+                  {deleting ? (
+                    <>
+                      <span className="w-3 h-3 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <span>🗑️</span> Delete Chat
+                    </>
+                  )}
+                </button>
               </div>
             </div>
+
 
             <div
               className="border border-[var(--hairline)] rounded-[12px] p-6 sm:p-8 bg-[var(--canvas)] markdown shadow-xs"
