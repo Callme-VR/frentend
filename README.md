@@ -34,7 +34,7 @@
 - 🤖 **Autonomous Multi-Agent System**: Sequential agent graph built with LangGraph for deterministic task delegation (Flight Agent → Hotel Agent → Itinerary Agent → Final Agent).
 - ✈️ **Real-Time Flight Search**: Integrates AviationStack API with `airportsdata` & `pycountry` for dynamic IATA resolution and flight tracking.
 - 🏨 **Live Hotel & Web Search**: Queries Tavily API for real-time hotel options, snippets, and direct web links.
-- 🗓️ **Custom Day-by-Day Itineraries**: Synthesizes budget-aware, realistic travel plans using Google GenAI's high-speed `gemini-2.5-flash` LLM.
+- 🗓️ **Custom Day-by-Day Itineraries**: Synthesizes budget-aware, realistic travel plans using Google GenAI's high-speed `gemini-3.6-flash` LLM.
 - ⚡ **100% Async Pipeline**: Fully asynchronous python backend (`httpx`, `ainvoke`, `AsyncClient`) to maximize throughput without blocking the event loop.
 - 🎨 **Minimalist Sleek UI**: Next.js 16 frontend featuring a clean monochrome design system, interactive prompt shortcuts, clipboard copying, printing, and client-side markdown parsing via `marked`.
 - 🐳 **Containerized & Production Ready**: Backend includes a optimized multi-stage Dockerfile powered by `uv` for ultra-fast dependency resolution.
@@ -112,7 +112,7 @@ triplanner/
 ### Backend (`backend/`)
 - **Framework**: [FastAPI](https://fastapi.tiangolo.com/) + [Uvicorn](https://www.uvicorn.org/)
 - **Agent Orchestration**: [LangGraph](https://www.langchain.com/langgraph) & [LangChain](https://www.langchain.com/)
-- **LLM Provider**: [Google GenAI](https://ai.google.dev/) (`gemini-2.5-flash`)
+- **LLM Provider**: [Google GenAI](https://ai.google.dev/) (`gemini-3.6-flash`)
 - **HTTP Client**: [HTTPX](https://www.python-httpx.org/) (Async)
 - **External APIs**: [AviationStack](https://aviationstack.com/), [Tavily AI](https://tavily.com/)
 - **Data Tools**: `airportsdata`, `pycountry`

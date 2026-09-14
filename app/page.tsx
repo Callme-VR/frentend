@@ -14,8 +14,7 @@ const QUICK_PROMPTS = [
 const AGENT_STEPS = [
   { name: "Flight Agent", icon: "✈️", desc: "AviationStack & IATA" },
   { name: "Hotel Agent", icon: "🏨", desc: "Tavily Web Search" },
-  { name: "Itinerary Agent", icon: "🗓️", desc: "Gemini 2.5 Flash" },
-  { name: "Final Agent", icon: "📋", desc: "Markdown Synthesis" },
+  { name: "Travel Planner", icon: "🗓️", desc: "Google GenAI Synthesis" },
 ];
 
 export default function Home() {
@@ -64,7 +63,16 @@ export default function Home() {
         return;
       }
 
-      setResult(data.answer);
+      let answerText = data.answer;
+      if (Array.isArray(answerText)) {
+        answerText = answerText
+          .map((item: any) => (typeof item === "string" ? item : item?.text || JSON.stringify(item)))
+          .join("\n");
+      } else if (typeof answerText === "object" && answerText !== null) {
+        answerText = answerText.text || JSON.stringify(answerText);
+      }
+
+      setResult(answerText || "No answer received from AI.");
       setThreadId(data.thread_id);
 
       // Scroll to result after state update

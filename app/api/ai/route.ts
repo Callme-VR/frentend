@@ -55,7 +55,7 @@ export async function POST(request: Request) {
         message,
         thread_id: body.thread_id,
       },
-      { timeout: 60000 }
+      { timeout: 120000 }
     );
 
     return Response.json(res.data);
